@@ -1,12 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from '../styles/index.module.css';
 
 export default function LoginStep({ onAuth }) {
   const BOT_USERNAME = 'mrdanauthbot';
   const containerRef = useRef(null);
+  const [loginMode, setLoginMode] = useState('native');
+  const [nativeLoading, setNativeLoading] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current) {
+    if (!containerRef.current || loginMode !== 'manual') {
       return undefined;
     }
 
@@ -42,7 +44,37 @@ export default function LoginStep({ onAuth }) {
       }
       delete window[callbackName];
     };
-  }, [onAuth]);
+  }, [onAuth, loginMode]);
+
+  const startNativeLogin = () => {
+    setNativeLoading(true);
+
+    const start = Date.now();
+    let fallbackTimer;
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        clearTimeout(fallbackTimer);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        setNativeLoading(false);
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    // If Telegram app is not installed, browser stays visible and we switch to manual mode.
+    fallbackTimer = setTimeout(() => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+
+      if (!document.hidden && Date.now() - start >= 1400) {
+        setLoginMode('manual');
+      }
+
+      setNativeLoading(false);
+    }, 1500);
+
+    window.location.href = `tg://resolve?domain=${BOT_USERNAME}`;
+  };
 
   return (
     <div className={styles.loginContainer}>
@@ -53,9 +85,30 @@ export default function LoginStep({ onAuth }) {
         </div>
 
         <div className={styles.loginContent}>
-          <div className={styles.telegramLoginWrapper}>
-            <div id="telegram-login-container" ref={containerRef}></div>
-          </div>
+          {loginMode === 'native' && (
+            <div className={styles.nativeLoginWrapper}>
+              <button
+                type="button"
+                className={styles.nativeLoginButton}
+                onClick={startNativeLogin}
+                disabled={nativeLoading}
+              >
+                {nativeLoading
+                  ? 'Checking Telegram app...'
+                  : 'Login with installed Telegram app'}
+              </button>
+              <p className={styles.nativeHint}>
+                If Telegram is not installed, we will switch to manual phone
+                typing automatically.
+              </p>
+            </div>
+          )}
+
+          {loginMode === 'manual' && (
+            <div className={styles.telegramLoginWrapper}>
+              <div id="telegram-login-container" ref={containerRef}></div>
+            </div>
+          )}
 
           <div className={styles.divider}>
             <span>or</span>

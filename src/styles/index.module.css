@@ -87,6 +87,44 @@
   margin-bottom: 1.5rem;
 }
 
+.nativeLoginWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.nativeLoginButton {
+  width: 100%;
+  max-width: 22rem;
+  padding: 0.8rem 1rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nativeLoginButton:hover {
+  background: var(--color-primary-dark);
+}
+
+.nativeLoginButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.nativeHint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-gray-600);
+}
+
 .divider {
   display: flex;
   align-items: center;
@@ -335,4 +373,3 @@
   line-height: 1.25rem;
   color: var(--color-gray-600);
 }
-
