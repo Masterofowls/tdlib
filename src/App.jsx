@@ -1,53 +1,97 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import RegistrationStep from "./components/RegistrationStep.jsx";
-import OTPStep from "./components/OTPStep.jsx";
-import ProfileStep from "./components/ProfileStep.jsx";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import styles from './styles/index.module.css';
+import LoginStep from './components/LoginStep.jsx';
+import ProfileStep from './components/ProfileStep.jsx';
 
 function App() {
-  const [step, setStep] = useState("registration");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [step, setStep] = useState('login');
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("telegram_jwt_token");
+    // Check if user has a valid token
+    const savedToken = localStorage.getItem('telegram_jwt_token');
     if (savedToken) {
-      verifyAndRestoreSession(savedToken);
+      verifyToken(savedToken);
     } else {
       setLoading(false);
     }
   }, []);
 
-  const verifyAndRestoreSession = async (savedToken) => {
+  const verifyToken = async (savedToken) => {
     try {
-      const response = await axios.get("/api/me", {
+      const response = await axios.get('/api/me', {
         headers: { Authorization: `Bearer ${savedToken}` },
       });
 
-      if (response.data) {
+      if (response.data.success) {
         setToken(savedToken);
-        setUser(response.data);
-        setStep("profile");
+        setUser(response.data.user);
+        setStep('profile');
       }
     } catch (error) {
-      console.error("Session restoration failed:", error);
-      localStorage.removeItem("telegram_jwt_token");
+      console.error('Token verification failed:', error);
+      localStorage.removeItem('telegram_jwt_token');
+      setLoading(false);
+    }
+  };
+
+  const handleTelegramAuth = async (telegramUser) => {
+    setLoading(true);
+    try {
+      // Send Telegram data to backend for verification
+      const response = await axios.post('/api/auth/telegram', telegramUser);
+
+      if (response.data.success && response.data.token) {
+        const { token: newToken, user: newUser } = response.data;
+
+        // Save token to localStorage
+        localStorage.setItem('telegram_jwt_token', newToken);
+
+        // Update state
+        setToken(newToken);
+        setUser(newUser);
+        setStep('profile');
+      }
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      alert('Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegister = (phone) => {
-    setPhoneNumber(phone);
-    setStep("otp");
+  const handleLogout = () => {
+    localStorage.removeItem('telegram_jwt_token');
+    setToken(null);
+    setUser(null);
+    setStep('login');
   };
 
-  const handleVerify = async (otp) => {
-    try {
-      const response = await axios.post("/api/verify-otp", {
-        phoneNumber,
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingSpinner}>
+          <div className={styles.spinner}></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.container}>
+      {step === 'login' && <LoginStep onAuth={handleTelegramAuth} />}
+      {step === 'profile' && user && (
+        <ProfileStep user={user} onLogout={handleLogout} />
+      )}
+    </div>
+  );
+}
+
+export default App;
         otp,
       });
       if (response.data.success) {

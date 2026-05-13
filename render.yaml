@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: telegram-otp-bot
+    name: telegram-notification-bot
     runtime: node
     plan: free
     buildCommand: npm install
@@ -10,8 +10,6 @@ services:
         sync: false
       - key: BOT_USERNAME
         value: mrdanauthbot
-      - key: JWT_SECRET
-        generateValue: true
       - key: FRONTEND_URL
         value: https://tdlib.vercel.app
       - key: PORT
