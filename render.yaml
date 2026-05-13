@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: telegram-otp-bot
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node bot.js
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: BOT_USERNAME
+        value: mrdanauthbot
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://tdlib.vercel.app
+      - key: PORT
+        value: 3000

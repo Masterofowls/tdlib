@@ -1,5 +1,5 @@
 {
-  "name": "telegram-otp-baseui",
+  "name": "telegram-otp-system",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -7,10 +7,11 @@
     "build": "vite build",
     "vercel-build": "npm run build",
     "preview": "vite preview",
-    "server": "node server.js"
+    "start": "node bot.js",
+    "server": "node server.js",
+    "bot": "node bot.js"
   },
   "dependencies": {
-    "@base-ui/react": "^1.4.1",
     "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
