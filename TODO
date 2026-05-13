@@ -1,0 +1,7 @@
+curl -X POST "https://api.telegram.org/bot$env:BOT_TOKEN/setWebhook" `
+  -H "Content-Type: application/json" `
+  -d '{\"url\": \"https://tdlib.vercel.app/api/webhook\"}'
+
+vercel env add BOT_TOKEN
+vercel env add BOT_USERNAME
+vercel env add JWT_SECRET
