@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import cors from 'cors';
+import axios from 'axios';
 
 const app = express();
 app.use(cors());
@@ -75,6 +76,35 @@ function verifyJWT(token) {
   }
 }
 
+async function sendTelegramConfirmation(userData) {
+  if (!BOT_TOKEN || !userData?.id) {
+    return false;
+  }
+
+  const text = [
+    '✅ Login confirmed',
+    '',
+    `Hello ${userData.first_name || 'there'}!`,
+    'Your Telegram login was successful.',
+    '',
+    `Time: ${new Date().toISOString()}`,
+  ].join('\n');
+
+  try {
+    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      chat_id: userData.id,
+      text,
+    });
+    return true;
+  } catch (error) {
+    console.error(
+      'Failed to send Telegram confirmation:',
+      error.response?.data || error.message,
+    );
+    return false;
+  }
+}
+
 
 // ============= HEALTH CHECK =============
 app.get('/api/health', (req, res) => {
@@ -91,7 +121,7 @@ app.get('/api/health', (req, res) => {
  * POST /api/auth/telegram
  * Body: { id, first_name, last_name, username, photo_url, hash, auth_date }
  */
-app.post('/api/auth/telegram', (req, res) => {
+app.post('/api/auth/telegram', async (req, res) => {
   const telegramData = req.body;
 
   // Verify the data signature from Telegram
@@ -124,9 +154,13 @@ app.post('/api/auth/telegram', (req, res) => {
   // Generate JWT token
   const token = generateJWT(userData);
 
+  // Non-blocking in behavior for auth: login succeeds even if chat isn't started.
+  const notificationSent = await sendTelegramConfirmation(userData);
+
   res.json({
     success: true,
     token,
+    notificationSent,
     user: {
       telegramId: userData.id,
       firstName: userData.first_name,
