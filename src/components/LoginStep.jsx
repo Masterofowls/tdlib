@@ -1,47 +1,48 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import styles from '../styles/index.module.css';
 
 export default function LoginStep({ onAuth }) {
   const BOT_USERNAME = 'mrdanauthbot';
+  const containerRef = useRef(null);
 
   useEffect(() => {
-    // Load Telegram script
-    const script = document.createElement('script');
-    script.src = 'https://telegram.org/js/telegram-web-app.js';
-    script.async = true;
-    document.body.appendChild(script);
+    if (!containerRef.current) {
+      return undefined;
+    }
 
-    // Load Telegram Login Widget script
+    const callbackName = '__telegramLoginAuthCallback';
+
+    window[callbackName] = (telegramUser) => {
+      if (telegramUser?.hash) {
+        onAuth(telegramUser);
+      } else {
+        alert('Authentication failed. Please try again.');
+      }
+    };
+
+    containerRef.current.innerHTML = '';
+
+    // Initialize Telegram Login Widget using official data attributes API.
     const loginScript = document.createElement('script');
     loginScript.src = 'https://telegram.org/js/telegram-widget.js?22';
     loginScript.async = true;
-    loginScript.onload = () => {
-      // Initialize Telegram Login Widget
-      if (window.Telegram?.Login) {
-        window.Telegram.Login.embed({
-          bot_id: '7627661285', // Get this from @BotFather
-          size: 'large',
-          onAuthCallback: (user) => {
-            handleTelegramAuth(user);
-          },
-        });
-      }
-    };
-    document.getElementById('telegram-login-container').appendChild(loginScript);
+    loginScript.setAttribute('data-telegram-login', BOT_USERNAME);
+    loginScript.setAttribute('data-size', 'large');
+    loginScript.setAttribute('data-radius', '10');
+    loginScript.setAttribute('data-request-access', 'write');
+    loginScript.setAttribute('data-userpic', 'false');
+    loginScript.setAttribute('data-onauth', `${callbackName}(user)`);
+    loginScript.setAttribute('data-lang', 'en');
+
+    containerRef.current.appendChild(loginScript);
 
     return () => {
-      if (script.parentNode) script.parentNode.removeChild(script);
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
+      delete window[callbackName];
     };
-  }, []);
-
-  const handleTelegramAuth = (telegramUser) => {
-    // Add hash to the data for verification
-    if (telegramUser.hash) {
-      onAuth(telegramUser);
-    } else {
-      alert('Authentication failed. Please try again.');
-    }
-  };
+  }, [onAuth]);
 
   return (
     <div className={styles.loginContainer}>
@@ -53,7 +54,7 @@ export default function LoginStep({ onAuth }) {
 
         <div className={styles.loginContent}>
           <div className={styles.telegramLoginWrapper}>
-            <div id="telegram-login-container"></div>
+            <div id="telegram-login-container" ref={containerRef}></div>
           </div>
 
           <div className={styles.divider}>
