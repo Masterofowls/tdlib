@@ -10,6 +10,8 @@ app.use(express.json());
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const RENDER_BOT_URL = process.env.RENDER_BOT_URL || 'https://tdlib.onrender.com';
+const NOTIFY_TOKEN = process.env.NOTIFY_TOKEN || '';
 
 // In-memory user storage (use Redis/DB in production)
 const userStore = new Map();
@@ -77,8 +79,12 @@ function verifyJWT(token) {
 }
 
 async function sendTelegramConfirmation(userData) {
-  if (!BOT_TOKEN || !userData?.id) {
-    return false;
+  if (!userData?.id) {
+    return {
+      success: false,
+      sentVia: 'none',
+      error: 'Missing telegram user id',
+    };
   }
 
   const text = [
@@ -90,18 +96,45 @@ async function sendTelegramConfirmation(userData) {
     `Time: ${new Date().toISOString()}`,
   ].join('\n');
 
+  if (BOT_TOKEN) {
+    try {
+      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        chat_id: userData.id,
+        text,
+      });
+      return { success: true, sentVia: 'telegram-api' };
+    } catch (error) {
+      console.error(
+        'Failed to send via Telegram API:',
+        error.response?.data || error.message,
+      );
+    }
+  }
+
   try {
-    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      chat_id: userData.id,
-      text,
-    });
-    return true;
-  } catch (error) {
-    console.error(
-      'Failed to send Telegram confirmation:',
-      error.response?.data || error.message,
+    const headers = {};
+    if (NOTIFY_TOKEN) {
+      headers['x-notify-token'] = NOTIFY_TOKEN;
+    }
+
+    await axios.post(
+      `${RENDER_BOT_URL}/notify-login`,
+      {
+        telegramId: userData.id,
+        firstName: userData.first_name,
+      },
+      { headers },
     );
-    return false;
+
+    return { success: true, sentVia: 'render-bot-service' };
+  } catch (error) {
+    const fallbackError = error.response?.data || error.message;
+    console.error('Failed fallback notification via Render:', fallbackError);
+    return {
+      success: false,
+      sentVia: 'none',
+      error: typeof fallbackError === 'string' ? fallbackError : JSON.stringify(fallbackError),
+    };
   }
 }
 
@@ -155,12 +188,14 @@ app.post('/api/auth/telegram', async (req, res) => {
   const token = generateJWT(userData);
 
   // Non-blocking in behavior for auth: login succeeds even if chat isn't started.
-  const notificationSent = await sendTelegramConfirmation(userData);
+  const notificationResult = await sendTelegramConfirmation(userData);
 
   res.json({
     success: true,
     token,
-    notificationSent,
+    notificationSent: notificationResult.success,
+    notificationChannel: notificationResult.sentVia,
+    notificationError: notificationResult.error || null,
     user: {
       telegramId: userData.id,
       firstName: userData.first_name,

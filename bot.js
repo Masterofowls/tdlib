@@ -14,6 +14,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const BOT_USERNAME = process.env.BOT_USERNAME || 'mrdanauthbot';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://tdlib.vercel.app';
 const PORT = process.env.PORT || 3000;
+const NOTIFY_TOKEN = process.env.NOTIFY_TOKEN || '';
 
 if (!BOT_TOKEN) {
   console.error('❌ BOT_TOKEN environment variable is required!');
@@ -114,6 +115,43 @@ app.get('/health', (req, res) => {
     botUsername: BOT_USERNAME,
     timestamp: new Date().toISOString(),
   });
+});
+
+app.post('/notify-login', async (req, res) => {
+  if (NOTIFY_TOKEN) {
+    const providedToken = req.headers['x-notify-token'];
+    if (providedToken !== NOTIFY_TOKEN) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+  }
+
+  const { telegramId, firstName } = req.body || {};
+
+  if (!telegramId) {
+    return res
+      .status(400)
+      .json({ success: false, error: 'telegramId is required' });
+  }
+
+  const text = [
+    '✅ Login confirmed',
+    '',
+    `Hello ${firstName || 'there'}!`,
+    'Your Telegram login was successful.',
+    '',
+    `Time: ${new Date().toISOString()}`,
+  ].join('\n');
+
+  const sent = await sendTelegramMessage(telegramId, text, undefined);
+
+  if (!sent) {
+    return res.status(502).json({
+      success: false,
+      error: 'Failed to send confirmation from bot service',
+    });
+  }
+
+  res.json({ success: true, sentVia: 'render-bot-service' });
 });
 
 // ============= START BOT =============
